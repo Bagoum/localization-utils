@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>FSUtil</RootNamespace>
+        <TargetFrameworks>net472;net5.0</TargetFrameworks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Types.fs" />
+        <Compile Include="Functions.fs" />
+        <Compile Include="Extensions.fs" />
+        <Compile Include="ParserUtils.fs" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="FParsec" Version="1.1.1" />
+    </ItemGroup>
+
+</Project>

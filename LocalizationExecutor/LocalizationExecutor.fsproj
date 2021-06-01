@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <RootNamespace>LocalizationActorFS</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="LocalizationParser.fs" />
+        <Compile Include="LocalizationCodeGen.fs" />
+        <Compile Include="LocalizationFileOps.fs" />
+        <Compile Include="LocalizerBase.fs" />
+        <Compile Include="LocalizerDMK.fs" />
+        <Compile Include="Program.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FParsec" Version="1.1.1" />
+      <PackageReference Include="FSharp.Data" Version="3.3.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FSParserUtils\FSParserUtils.fsproj" />
+    </ItemGroup>
+
+</Project>

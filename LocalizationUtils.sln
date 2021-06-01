@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizationSpreadsheeter", "LocalizationSpreadsheeter\LocalizationSpreadsheeter.csproj", "{102CE94D-D702-4BFE-92D7-FFEBC7C7966A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LocalizationExecutor", "LocalizationExecutor\LocalizationExecutor.fsproj", "{A1E7402E-EB1D-42C8-9429-660B136FADBB}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSParserUtils", "FSParserUtils\FSParserUtils.fsproj", "{094A4CDF-5B69-498C-9D32-9FDA2E64EBC4}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FTests", "FTests\FTests.fsproj", "{416AD453-0CC8-4CD1-AF89-1234A09EF12B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{102CE94D-D702-4BFE-92D7-FFEBC7C7966A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{102CE94D-D702-4BFE-92D7-FFEBC7C7966A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{102CE94D-D702-4BFE-92D7-FFEBC7C7966A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{102CE94D-D702-4BFE-92D7-FFEBC7C7966A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1E7402E-EB1D-42C8-9429-660B136FADBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1E7402E-EB1D-42C8-9429-660B136FADBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1E7402E-EB1D-42C8-9429-660B136FADBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1E7402E-EB1D-42C8-9429-660B136FADBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{094A4CDF-5B69-498C-9D32-9FDA2E64EBC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{094A4CDF-5B69-498C-9D32-9FDA2E64EBC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{094A4CDF-5B69-498C-9D32-9FDA2E64EBC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{094A4CDF-5B69-498C-9D32-9FDA2E64EBC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{416AD453-0CC8-4CD1-AF89-1234A09EF12B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{416AD453-0CC8-4CD1-AF89-1234A09EF12B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{416AD453-0CC8-4CD1-AF89-1234A09EF12B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{416AD453-0CC8-4CD1-AF89-1234A09EF12B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
