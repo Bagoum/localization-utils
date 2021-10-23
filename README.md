@@ -29,7 +29,7 @@ Third, on Google Apps Script, create a new project and add your Google Cloud Pla
 
 Then, create a file and add the code in exportAsCSVAppsScript.js to it. Once you've saved the file, go ahead and create a new deployment.
 
-<img src="C:\Workspace\dev\LocalizationUtils\img\deploy.jpg" alt="deploy" style="zoom: 25%;" />
+<img src=".\img\deploy.jpg" alt="deploy" style="zoom: 25%;" />
 
 The "deployment id" on the next page can be entered in the SCRIPT_ID constant in LocalizationSpreadsheeter/Program.cs. 
 
