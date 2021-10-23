@@ -14,7 +14,7 @@ type FileInfo = {
         referencePrefix = referencePrefix
     }
 
-type LReqCtx = {
+type FileBatch = {
     name : string
     outDir : string
     ctx : LGenCtx
@@ -25,7 +25,7 @@ type LReqCtx = {
 type SpreadsheetCtx = {
     spreadsheetId : string
     csvDir : string
-    reqs : LReqCtx list
+    batches : FileBatch list
 }
 
 let exportDir csets req ssht =
@@ -83,7 +83,7 @@ let explainCsets csets =
     |> String.concat "\n"
 
 let generateAll ssht =
-   ssht.reqs |> List.iter (fun req ->
+   ssht.batches |> List.iter (fun req ->
         Console.WriteLine $"Performing localization analysis for {req.name}"
         generateCode req ssht
         |> explainCsets

@@ -1,6 +1,8 @@
+# About
+
 This project contains various localization-related utilities I use across various projects. The functionalities aren't cleanly demarcated right now, but there are two significant functionalities: one to batch-download Google Drive spreadsheets as CSVs (useful even for non-localization projects), and one to transform CSVs with translation maps into C# source code using the LString class from BagoumLib (https://github.com/Bagoum/suzunoya/blob/master/BagoumLib/Culture/Variant.cs). 
 
-## Downloading Spreadsheets
+# Downloading Spreadsheets
 
 Google Sheets allows you to download a sheet as a .csv file, but only one sheet at a time. If you want to update multiple sheets, you have to click through the menus once for every sheet. Because iteration time should always be effectively O(1), this is unacceptable for any real usage of Google Sheets (such as as translation maps). To remedy this, I wrote a bunch of utilities that first use Google Apps Script to turn all the sheets into .csvs on your Google Drive, then zip up the folder, then download and unzip the folder to your computer.
 
@@ -31,13 +33,13 @@ Then, create a file and add the code in exportAsCSVAppsScript.js to it. Once you
 
 The "deployment id" on the next page can be entered in the SCRIPT_ID constant in LocalizationSpreadsheeter/Program.cs. 
 
-Now you're ready to download your spreadsheets. You can call the Download function in Program.cs, which exports the spreadsheets to a zip of CSV files on Google Drive, then downloads the archive locally and unzips it.
+Now you're ready to download your spreadsheets. You can call the Download function in Program.cs, which exports the spreadsheets to a zip of CSV files on Google Drive, then downloads the archive locally and unzips it. It will require several screens of OAuth permissions that should automatically open in your browser.
 
-To get the ID of a spreadsheet (the first argument to Download), open it in a browser and look at the url. In the url `https://docs.google.com/spreadsheets/d/HELLOWORLDFOOBAR/`, `HELLOWORLDFOOBAR` is the spreadsheet ID.
+To download spreadsheets with the `Download` function, you only need a spreadsheet ID from Google Drive and an output CSV directory. To get the ID of a spreadsheet, open it in a browser and look at the url. In the url `https://docs.google.com/spreadsheets/d/HELLOWORLDFOOBAR/`, `HELLOWORLDFOOBAR` is the spreadsheet ID. The default spreadsheet information in `dmkSpreadsheet` points to a public copy of the localized strings for DMK/SiMP that you can use to test.
 
 If you're only using the download functionality, make sure to remove the `generateAll` call in Main, which will run the localization parser (see below).
 
-# Translation Maps
+# Localization Maps
 
 Let's say we have a spreadsheet formatted like this:
 
@@ -95,6 +97,8 @@ public static string pickup_gold(object arg0, object arg1) => Localization.Local
 };
 ```
 
+Render is essentially a helper function that concatenates strings and treats them as a format string. You can see a reference definition [here](https://github.com/Bagoum/suzunoya/blob/master/BagoumLib/Culture/LocalizationRendering.cs).
+
 We can define our helper functions somewhere else as follows:
 
 ```c#
@@ -114,16 +118,22 @@ Assert.AreEqual("華扇が金貨を50枚拾いました", pickup_gold(kasen, 50)
 Assert.AreEqual("華扇が金貨を1枚拾いました", pickup_gold(kasen, 1));
 ```
 
-These functions are decently compile-time safe (there's no type-checking on the arguments, which we might be able to get if we wrote them manually), are fairly fast (no reflection hijinks, no string lookup), and can actually be written in your translation spreadsheets.
+These functions are decently compile-time safe (though there's no type-checking on the arguments, which we might be able to get if we wrote them manually), are fairly fast (no reflection hijinks, no string lookup), and can actually be written in your translation spreadsheets.
 
-### Configuration
+### Code Setup
 
-If the columns of your spreadsheet are structured differently, or you need more languages, then change LocalizationExecutor/CSV/StructureGameStrings.csv to have the correct structure, add languages to the `Row` type and the `toLocales` function in LocalizationCodeGen.fs, and make sure your LGenCtx has an entry in `locales` for every language you are using. 
+To do localization mapping, you need a `SpreadsheetCtx`, which contains a list of batches (in addition to the spreadsheet ID and output CSV directory). A batch `FileBatch` contains metadata about some subset of the CSVs on Google Drive. When processing a batch, the code will take all the files marked by that batch and put the generated code in the directory `batch.outDir`. 
 
-The parsing configuration is defined in LocalizationParser.fs.
+As an example, the DMK spreadsheet contains strings for the DMK engine as well as the SiMP game. The DMK code should go in the core Unity repository, but the SiMP code should go in the SiMP submodule. To handle this, the `dmkSpreadsheet` has two batches `dmkCoreBatch` and `dmkSimpBatch`, which handle different sets of information and point to different output directories.
 
-Each sheet is mapped to its own source file with its own nested class via LocalizationCodeGen.fs. Then, a single file with the default name `_StringRepository.cs` is constructed with the `_allDataMap` as seen in the previous section. You probably want some helpers to query `_allDataMap`; I recommend putting them in a partial static class (along with your Render functions). See https://github.com/Bagoum/danmokou/blob/master/Assets/Danmokou/Plugins/Self/Core/Localization/LocalizedStrings.cs for a reference.
+# Extra Configuration
+
+If the columns of your spreadsheet are structured differently, or you need more languages, then change LocalizationExecutor/CSV/StructureGameStrings.csv to have the correct structure (F# uses the CSV to provide type information), replicate the languages in the `Row` class and the `toLocales` function in LocalizationCodeGen.fs, and make sure your LGenCtx has an entry in `locales` for every language you are using. 
+
+The string function parser is defined in LocalizationParser.fs using FParsec.
+
+Each sheet is mapped to its own source file with its own nested class via LocalizationCodeGen.fs. Then, a single file with the default name `_StringRepository.cs` is constructed with the `_allDataMap` as seen in the previous section. You probably want some helpers to query `_allDataMap`; I recommend putting them in a partial static class (along with your Render functions). See https://github.com/Bagoum/danmokou/blob/master/Assets/Danmokou/Plugins/Danmokou/Core/Localization/LocalizedStrings.cs for a reference on querying.
 
 
 
-This section is WIP-- ping me on Discord if you need to know more immediately.
+This document is WIP-- ping me on Discord if you need to know more.

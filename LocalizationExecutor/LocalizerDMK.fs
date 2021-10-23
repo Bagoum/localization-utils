@@ -7,10 +7,10 @@ let private PROJECT_DIR = "C://Workspace/unity/Danmokou/"
 
 let lctx = { defaultLCtx with
                 namespace_ = "Danmokou.Core"
-                outputHeader = defaultLCtx.outputHeader + "\nusing Danmokou.Core;\nusing static Danmokou.Core.LocalizationRendering;"
+                outputHeader = defaultLCtx.outputHeader + "\nusing Danmokou.Core;\nusing static BagoumLib.Culture.LocalizationRendering;\nusing static Danmokou.Core.LocalizationRendering;"
            }
 
-let dmkCoreReq : LReqCtx = {
+let dmkCoreBatch : FileBatch = {
     name = "DMK Core"
     topFileName = "_StringRepository.cs"
     outDir = PROJECT_DIR + "Assets/Danmokou/Plugins/Danmokou/Core/Localization/Generated/";
@@ -28,7 +28,7 @@ let dmkCoreReq : LReqCtx = {
     ] |> Map.ofList
 }
 
-let dmkSimpReq : LReqCtx = {
+let dmkSimpBatch : FileBatch = {
     name = "DMK SiMP"
     topFileName = "_StringRepository.cs"
     outDir = PROJECT_DIR + "Assets/SiMP/Plugins/Danmokou/Localization/Generated/";
@@ -44,7 +44,7 @@ let dmkSimpReq : LReqCtx = {
 
 
 let dmkSpreadsheet = {
-    spreadsheetId = "1Oglvu_08k3i7EDxQGrogGXUncs0q-hs_lb834cCvcq0"
+    spreadsheetId = "1iRlNA8DNFSPBEdcRsbc_e74G0sB-yIFmvsSKRGUKX9w"
     csvDir = "C://Workspace/tmp/csv/"
-    reqs = [ dmkCoreReq; dmkSimpReq ]
+    batches = [ dmkCoreBatch; dmkSimpBatch ]
 }

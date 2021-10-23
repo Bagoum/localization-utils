@@ -28,6 +28,8 @@ let render fragments indent =
 
 type Localizable = CsvProvider<"./CSV/StructureGameStrings.csv">
 
+//Why is this necessary? Because all types and methods related to type providers are inaccessible
+// outside of this assembly, which makes testing impossible :)
 type Row = {
     key: string
     en: string

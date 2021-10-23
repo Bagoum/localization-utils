@@ -12,10 +12,12 @@ namespace ActorCS {
 static class Program {
     /// <summary>
     /// Deployment ID of the AppsScript project containing the code in "exportAsCSVAppsScript.js".
+    /// You will need to update this before being able to batch-download sheets.
     /// </summary>
     public const string SCRIPT_ID = "AKfycbzhEpwRwps69J4Q-vECvH6H4X3MVm4TvNnHeztVcrSwk6gPzFlSypmc5yij7yU9w2LY";
     /// <summary>
     /// File containing Google Cloud Platform OAuth client information.
+    /// You will need to add this before being able to batch-download sheets.
     /// </summary>
     public const string GCP_CLIENT_AUTH = "C://Workspace/dev/LocalizationUtils/Secrets/gdrive.json";
 
@@ -32,14 +34,20 @@ static class Program {
         var zip = drive.DownloadFile(zipId);
         await drive.Files.Delete(folderId).ExecuteAsync();
         //Note: this command will clear the directory before adding the download files to it.
+        if (!Directory.Exists(csvDir))
+            Directory.CreateDirectory(csvDir);
         new DirectoryInfo(csvDir).Delete(true);
         System.IO.Compression.ZipFile.ExtractToDirectory(zip, csvDir);
         File.Delete(zip);
     }
+
+    public static async Task DownloadAndGenerate(SpreadsheetCtx spreadsheet) {
+        await Download(spreadsheet.spreadsheetId, spreadsheet.csvDir);
+        generateAll(spreadsheet);
+    }
     
     static async Task Main(string[] args) {
-        await Download(dmkSpreadsheet.spreadsheetId, dmkSpreadsheet.csvDir);
-        generateAll(dmkSpreadsheet);
+        await DownloadAndGenerate(dmkSpreadsheet);
     }
 }
 }

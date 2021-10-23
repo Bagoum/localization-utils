@@ -42,6 +42,7 @@ let internal escape = (anyOf escapeChars |>> function
     | '{' -> "{{" //This is how brackets are escaped in C# string formatting
     | '}' -> "}}"
     | '"' -> "\\\""
+    | '\\' -> "\\\\"
     | c -> string c)
     
 let internal escapedFragment = pchar ESCAPER >>. escape |>> ParseUnit.String

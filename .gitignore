@@ -11,3 +11,4 @@ bin
 *.pdb
 
 Secrets
+LocalizationExecutor/Localizers
