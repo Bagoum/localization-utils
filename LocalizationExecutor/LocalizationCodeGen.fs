@@ -47,21 +47,32 @@ let toLocales (row: Row) =
 let argString i = sprintf "arg%d" i
 
 type LGenCtx = {
+    ///The statically referencable object name which can be used to switch by locale.
     localeSwitch: string
+    ///The type name of parameters to localization functions (eg. in C# this should be "object").
     objectType: string
-    locales: string list //locale keys (first is default). Should match toLocales function above
-    lsclass: string option //if present, zero-arg functions will be saved as LocalizedString instead (preferred)
-    methodToLsSuffix : string option //if this and lsclass are present, multi-arg functions will have a second form
-                                    // which returns a LocalizedString. This requires resolving all languages,
-                                    // but is useful for UI cases where the language can change on the screen.
+    ///Locale keys (first is default). Should match toLocales function
+    locales: string list 
+    ///If present, zero-arg functions will be saved as LocalizedString instead (preferred).
+    ///The tuple should contain the instantiated class and the static class. They may be the same.
+    /// In the case of DMK, the instantiated class is LText and the static class is LString.
+    lsclass: (string * string) option
+    ///If this and lsclass are present, multi-arg functions will have a second form
+    /// which returns a LocalizedString. This requires resolving all languages,
+    /// but is useful for UI cases where the language can change on the screen.
+    methodToLsSuffix : string option
+    ///The prefix to use for generating the ID of the localized string object. For example, if the key in
+    /// the excel sheet for the row is "cat", and lskeyprefix = "animals", then the final
+    /// ID for the localized string object will be "animals.cat".
     lskeyprefix : string
-    errors: string list
     renderFunc: string
     funcStandardizer: string -> string
     className: string
     nestedClassName: string
     namespace_: string
     outputHeader: string
+    ///Errors output by the generation process
+    errors: string list
     lsGenerated: (string * string) list
 } with
     member this.AddError str = { this with errors = str::this.errors }
@@ -185,20 +196,18 @@ let generateLS key (cls:string) nargs ctx (localizeds: ((ParseSequence * State) 
             Indent
         ]
         default_case
-        if List.length cases > 0 then
-            cases
-            |> List.collect (fun (loc, strs) -> List.concat [
-                [
-                    Word ","
-                    Newline
-                    Word $"({loc}, "
-                ]
-                strs
-                [
-                    Word ")"
-                ]
-            ])
-            else []
+        cases
+        |> List.collect (fun (loc, strs) -> List.concat [
+            [
+                Word ","
+                Newline
+                Word $"({loc}, "
+            ]
+            strs
+            [
+                Word ")"
+            ]
+        ])
         [
             Word ")"
             Newline
@@ -238,14 +247,14 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
     let fullKey = ctx.lskeyprefix + row.key
     match nargs, ctx.lsclass with
     //Zero-arg: generate a LocalizedString on the backend, with no suffix (?).
-    | 0, Some cls ->
+    | 0, Some (instCls, staticCls) ->
         let csets, ctx, ls =
             localizeds
-            |> generateLS fullKey cls nargs ctx
+            |> generateLS fullKey instCls nargs ctx
         mixBack remix_csets csets, { ctx with lsGenerated = (row.key, objName)::ctx.lsGenerated }, List.concat [
             [
                 Newline
-                Word $"public static readonly {cls} {objName} = "
+                Word $"public static readonly {staticCls} {objName} = "
             ]
             ls
             [
@@ -275,13 +284,14 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
             let prms = generateParams ctx nargs
             let ls_copy = //cset/ctx output is not important
                 match ctx.lsclass, ctx.methodToLsSuffix with
-                | Some cls, Some suffix -> localizeds
-                                           |> generateLS fullKey cls nargs ctx 
+                | Some (instCls, staticCls), Some suffix ->
+                                           localizeds
+                                           |> generateLS fullKey instCls nargs ctx 
                                            |> (fun (csets, ctx, ls) ->
                                                List.concat [
                                                    [
                                                        Newline
-                                                       Word $"public static {cls} {objName}{suffix}({prms}) => "
+                                                       Word $"public static {staticCls} {objName}{suffix}({prms}) => "
                                                    ]
                                                    ls
                                                    [

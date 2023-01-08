@@ -18,6 +18,7 @@ let dmkCoreBatch : FileBatch = {
     perFileInfo = [
         ("TestContent1", FileInfo.New "TestContent1" None)
         ("Generic", FileInfo.New "Generic" (Some "generic"))
+        ("Controls", FileInfo.New "Controls" None)
         ("UI", FileInfo.New "UI" None)
         ("Tutorial", FileInfo.New "Tutorial" None)
         ("CustomDifficulty", FileInfo.New "CDifficulty" None)

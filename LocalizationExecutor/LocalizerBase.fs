@@ -3,10 +3,10 @@
 open LocalizationExecutor.LocalizationCodeGen
 
 let defaultLCtx: LGenCtx = {
-    localeSwitch = "Localization.Locale.Value"
+    localeSwitch = "Locales.Provider.TextLocale.Value"
     objectType = "object"
     locales = ["null"; "Locales.JP"]
-    lsclass = Some "LString"
+    lsclass = Some ("LText", "LString")
     methodToLsSuffix = Some "_ls"
     lsGenerated = []
     lskeyprefix = "$SET BY FILEINFO"

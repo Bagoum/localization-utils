@@ -6,11 +6,14 @@ open LocalizationExecutor.LocalizationCodeGen
 
 
 type FileInfo = {
-    baseFileName: string
+    ///Name of the static class constructed to enclose corresponding localized string objects.
+    className: string
+    ///Optional string prefix to prepend to the IDs of localized string objects.
+    /// See LGenCtx.lskeyprefix
     referencePrefix: string option
 } with
     static member New baseFileName referencePrefix = {
-        baseFileName = baseFileName
+        className = baseFileName
         referencePrefix = referencePrefix
     }
 
@@ -34,7 +37,7 @@ let exportDir csets req ssht =
         let basename = Path.GetFileNameWithoutExtension p
         match req.perFileInfo.TryFind basename with
         | Some fi ->
-            let lctx = { req.ctx with nestedClassName = fi.baseFileName;
+            let lctx = { req.ctx with nestedClassName = fi.className;
                                     lskeyprefix = match fi.referencePrefix with | None -> "" | Some pref -> $"{pref}." }
             let csets, lctx = exportFile csets lctx p req.outDir
             csets, fi::fis, lctx::lctxs
@@ -50,15 +53,15 @@ let generateCode req ssht =
                         | None -> acc
                         | Some prefix ->
                             (x.lsGenerated
-                            |> List.map (fun (key, fn) -> ($"{prefix}.{key}", $"{fi.baseFileName}.{fn}")))
+                            |> List.map (fun (key, fn) -> ($"{prefix}.{key}", $"{fi.className}.{fn}")))
                             :: acc
             ) []
         |> Seq.concat
         |> Seq.map (fun (key, ls) -> $"{{ \"{key}\", {ls} }},")
-    req.ctx.lsclass |> Option.map (fun cls ->
+    req.ctx.lsclass |> Option.map (fun (_, staticCls) ->
         List.concat [
             [
-                Word $"private static readonly Dictionary<string, {cls}> _allDataMap = new Dictionary<string, {cls}>() {{"
+                Word $"private static readonly Dictionary<string, {staticCls}> _allDataMap = new Dictionary<string, {staticCls}>() {{"
                 Indent
             ]
             lsGenerated |> List.ofSeq |> List.collect (fun ls -> [
