@@ -1,8 +1,23 @@
 ﻿module LocalizationExecutor.LocalizerBase
 
+open FSharp.Data
 open LocalizationExecutor.LocalizationCodeGen
 
+type DefltCSVRow = CsvProvider<"./CSV/StructureGameStrings.csv">
+let defaultCSVRowToRow (row: DefltCSVRow.Row) = 
+        {
+            key = row.Key
+            locales = [ row.EN; row.JP ]
+        }
+
+///A default implementation of LGenCtx. Note that this assumes a CSV
+/// structured exactly like ./CSV/StructureGameStrings.csv. If your
+/// CSV is structured differently, override `loadRows` accordingly.
+/// See LocalizerPolyglot for an example on overriding `loadRows`.
 let defaultLCtx: LGenCtx = {
+    loadRows = fun path -> 
+        (DefltCSVRow.Load path).Rows
+        |> Seq.map defaultCSVRowToRow
     localeSwitch = "Locales.Provider.TextLocale.Value"
     objectType = "object"
     locales = ["null"; "Locales.JP"]

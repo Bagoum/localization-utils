@@ -1,6 +1,8 @@
 ﻿module LocalizationExecutor.LocalizerDMK
+open LocalizationExecutor.LocalizationCodeGen
 open LocalizationExecutor.LocalizationFileOps
 open LocalizationExecutor.LocalizerBase
+open FSharp.Data
 
 
 let private PROJECT_DIR = "C://Workspace/unity/Danmokou/"

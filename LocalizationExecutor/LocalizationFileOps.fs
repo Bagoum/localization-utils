@@ -39,7 +39,7 @@ let exportDir csets req ssht =
         | Some fi ->
             let lctx = { req.ctx with nestedClassName = fi.className;
                                     lskeyprefix = match fi.referencePrefix with | None -> "" | Some pref -> $"{pref}." }
-            let csets, lctx = exportFile csets lctx p req.outDir
+            let csets, lctx = exportFile csets lctx p fi.className req.outDir
             csets, fi::fis, lctx::lctxs
         | None -> (csets, fis, lctxs)) (csets, [], [])
 

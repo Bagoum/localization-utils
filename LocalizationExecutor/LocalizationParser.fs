@@ -9,18 +9,26 @@ type State = {
     highestArg: int
 }
 type ParseUnit =
-    | String of string //Normal/escaped
-    | StandardFormat of string //eg. `0:F1`. The brackets are stripped.
-    | Argument of int //eg. the 1 in `PLURAL(1, ...)`. Becomes `arg1` in the output.
-    | ConjFormat of InvokeUnit //eg. `PLURAL(1, coin, coins)`. The brackets are stripped.
-                               //The arguments are parsed each as ParseSequence.
-
+    ///Normal/escaped
+    | String of string
+    ///eg. `0:F1`. The brackets are stripped.
+    | StandardFormat of string
+    ///eg. the 1 in `PLURAL(1, ...)`. Becomes `arg1` in the output.
+    | Argument of int
+    ///eg. `PLURAL(1, coin, coins)`. The brackets are stripped. The arguments are parsed each as ParseSequence.
+    | ConjFormat of InvokeUnit
     
 and ParseSequence = ParseUnit list
 and InvokeUnit = {
     func: string
     args: ParseSequence list
 }
+
+let requiresQuotes pu =
+    match pu with
+    | String _ | StandardFormat _ -> true
+    | _ -> false
+
 let QUOTE = '\"'
 let ESCAPER = '\\'
 let FMT_OPEN = '{'
@@ -66,7 +74,7 @@ let rec internal formatFragment =
             let int_str = if (str.Contains(':')) then str.Split(':').[0] else str
             match Int32.TryParse int_str with
                 | true, int -> updateStateArg int |> updateUserState >>% ParseUnit.StandardFormat str
-                | _ -> fail <| sprintf "%s is not a valid format string." str)
+                | _ -> fail <| $"%s{str} is not a valid format string.")
     ])
 and internal invokeArg =
     (choice [

@@ -13,6 +13,7 @@
         <Compile Include="LocalizerBase.fs" />
         <Compile Include="Localizers\LocalizerSZYD1.fs" />
         <Compile Include="LocalizerDMK.fs" />
+        <Compile Include="LocalizerPolyglot.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

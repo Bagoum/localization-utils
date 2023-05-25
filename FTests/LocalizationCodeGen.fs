@@ -12,6 +12,7 @@ let Setup () =
     
 let ctx: LGenCtx = {
     localeSwitch = "Localization.Locale"
+    loadRows = fun s -> Seq.empty
     objectType = "ILangObject"
     locales = ["EN"; "JP"]
     lsclass = None
@@ -37,17 +38,15 @@ let TestEq(ctx, row, (expect: String)) =
 let TestBasic() =
     let row = {
         key = "pickup_50_gold"
-        en = "gold {$PLURAL(1, coin, coins)}"
-        jp = "{0}が金貨を{$JP_COUNTER(1, 枚)}拾いました"
+        locales = [ "gold {$PLURAL(1, coin, coins)}"; "{0}が金貨を{$JP_COUNTER(1, 枚)}拾いました" ]
     }
     TestEq(ctx, row, """public static string pickup_50_gold(ILangObject arg0, ILangObject arg1) => Localization.Locale switch {
-	JP => Render(Localization.Locale, new[] {
-		"{0}",
-		"が金貨を",
+	JP => Render(JP, new[] {
+		"{0}が金貨を",
 		JP_COUNTER(arg1, "枚"),
 		"拾いました",
 	}, arg0, arg1),
-	_ => Render(Localization.Locale, new[] {
+	_ => Render(null, new[] {
 		"gold ",
 		PLURAL(arg1, "coin", "coins"),
 	}, arg0, arg1),
@@ -59,8 +58,7 @@ let TestMissing() =
     let csets = ctx.locales |> List.map (fun _ -> Set.empty)
     let row = {
         key = "ex.missing"
-        en = "en!"
-        jp = "jp!"
+        locales = [ "en!"; "jp!" ]
     }
     TestEq(ctx, row, """public static string ex_missing => Localization.Locale switch {
 	JP => "jp!",
@@ -69,8 +67,7 @@ let TestMissing() =
     
     let row = {
         key = "ex_missing"
-        en = "en!"
-        jp = "{"
+        locales = [ "en!"; "{" ]
     }
     Assert.AreEqual((generateRow csets ctx row |> (fun (_, x, _) -> x)).errors.Length, 1)
     TestEq(ctx, row, """public static string ex_missing => Localization.Locale switch {
@@ -83,28 +80,15 @@ let TestMissing() =
 let TestSuffix() =
     let row = {
         key = "hello_world"
-        en = "a{0}"
-        jp = "{0}b"
+        locales = [ "a{0}"; "{0}b" ]
     }
     TestEq(lsdctx, row, """public static string hello_world(ILangObject arg0) => Localization.Locale switch {
-	JP => Render(Localization.Locale, new[] {
-		"{0}",
-		"b",
-	}, arg0),
-	_ => Render(Localization.Locale, new[] {
-		"a",
-		"{0}",
-	}, arg0),
+	JP => Render(JP, "{0}b", arg0),
+	_ => Render(null, "a{0}", arg0),
 };
 
-public static LocalizedString hello_world__ls(ILangObject arg0) => new LocalizedString(Render(EN, new[] {
-		"a",
-		"{0}",
-	}, arg0),
-	(JP, Render(JP, new[] {
-		"{0}",
-		"b",
-	}, arg0)))
+public static LocalizedString hello_world__ls(ILangObject arg0) => new LocalizedString(Render(EN, "a{0}", arg0),
+	(JP, Render(JP, "{0}b", arg0)))
 	{ ID = "hello_world" };""")
     
     

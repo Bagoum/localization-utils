@@ -1,6 +1,6 @@
 # About
 
-This project contains various localization-related utilities I use across various projects. The functionalities aren't cleanly demarcated right now, but there are two significant functionalities: one to batch-download Google Drive spreadsheets as CSVs (useful even for non-localization projects), and one to transform CSVs with translation maps into C# source code using the LString class from BagoumLib (https://github.com/Bagoum/suzunoya/blob/master/BagoumLib/Culture/Variant.cs). 
+This project contains various localization-related utilities I use across various projects. The functionalities aren't cleanly demarcated right now, but there are two significant functionalities: one to batch-download Google Drive spreadsheets as CSVs (useful even for non-localization projects), and one to transform CSVs with translation maps into C# source code using the [LString class from BagoumLib](https://github.com/Bagoum/suzunoya/blob/master/BagoumLib/Culture/Variant.cs). 
 
 # Downloading Spreadsheets
 
@@ -128,7 +128,7 @@ As an example, the DMK spreadsheet contains strings for the DMK engine as well a
 
 # Extra Configuration
 
-If the columns of your spreadsheet are structured differently, or you need more languages, then change LocalizationExecutor/CSV/StructureGameStrings.csv to have the correct structure (F# uses the CSV to provide type information), replicate the languages in the `Row` class and the `toLocales` function in LocalizationCodeGen.fs, and make sure your LGenCtx has an entry in `locales` for every language you are using. 
+If the columns of your spreadsheet are structured differently, or you need more languages, you can set up a custom CSVProvider type and override `loadRows` and `locales` in `LGenCtx`. See `LocalizerPolyglot.fs` for an example on how to use a custom spreadsheet structure.
 
 The string function parser is defined in LocalizationParser.fs using FParsec.
 
