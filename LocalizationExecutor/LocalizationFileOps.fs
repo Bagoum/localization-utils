@@ -9,7 +9,8 @@ type FileInfo = {
     ///Name of the static class constructed to enclose corresponding localized string objects.
     className: string
     ///Optional string prefix to prepend to the IDs of localized string objects.
-    /// See LGenCtx.lskeyprefix
+    ///For example, if the key in the excel sheet for the row is "cat", and lskeyprefix = "animals", then the final
+    /// ID for the localized string object will be "animals.cat".
     referencePrefix: string option
 } with
     static member New baseFileName referencePrefix = {
@@ -31,40 +32,35 @@ type SpreadsheetCtx = {
     batches : FileBatch list
 }
 
-let exportDir csets req ssht =
+let exportDir req ssht =
     Directory.EnumerateFiles(ssht.csvDir)
-    |> Seq.fold (fun (csets, fis, lctxs) p ->
+    |> Seq.choose (fun p ->
         let basename = Path.GetFileNameWithoutExtension p
         match req.perFileInfo.TryFind basename with
         | Some fi ->
             let lctx = { req.ctx with nestedClassName = fi.className;
                                     lskeyprefix = match fi.referencePrefix with | None -> "" | Some pref -> $"{pref}." }
-            let csets, lctx = exportFile csets lctx p fi.className req.outDir
-            csets, fi::fis, lctx::lctxs
-        | None -> (csets, fis, lctxs)) (csets, [], [])
+            Some (exportFile lctx p fi.className req.outDir, fi)
+        | None -> None)
 
 let generateCode req ssht =
-    let csets = req.ctx.locales |> List.map (fun _ -> Set.empty)
-    let csets, fis, ctxs = exportDir csets req ssht
+    let exported = exportDir req ssht |> List.ofSeq
     let lsGenerated =
-        List.zip fis ctxs
-        |> List.fold (fun acc (fi: FileInfo, x: LGenCtx) ->
-                        match fi.referencePrefix with
-                        | None -> acc
-                        | Some prefix ->
-                            (x.lsGenerated
-                            |> List.map (fun (key, fn) -> ($"{prefix}.{key}", $"{fi.className}.{fn}")))
-                            :: acc
-            ) []
-        |> Seq.concat
-        |> Seq.map (fun (key, ls) -> $"{{ \"{key}\", {ls} }},")
+        exported
+        |> List.choose (fun (generated, fi) ->
+                            fi.referencePrefix |> Option.map (fun prefix ->
+                                generated.lsGenerated
+                                |> List.map (fun (key, fn) -> ($"{prefix}.{key}", $"{fi.className}.{fn}"))
+            ))
+        |> List.concat
+        |> List.map (fun (key, ls) -> $"{{ \"{key}\", {ls} }},")
     req.ctx.lsclass |> Option.map (fun (_, staticCls) ->
         List.concat [
             [
                 Word $"private static readonly Dictionary<string, {staticCls}> _allDataMap = new Dictionary<string, {staticCls}>() {{"
                 Indent
             ]
-            lsGenerated |> List.ofSeq |> List.collect (fun ls -> [
+            lsGenerated |> List.collect (fun ls -> [
                 Newline
                 Word ls
             ])
@@ -74,15 +70,17 @@ let generateCode req ssht =
                 Word "};"
             ]
         ]
-        |> generateClass req.ctx
+        |> generateClass req.ctx req.ctx.classAttribute
         |> (fun pieces -> File.WriteAllText(Path.Join(req.outDir, req.topFileName), (render pieces 0)))
         ) |> ignore
-    List.zip req.ctx.locales csets
-    |> Array.ofList
+    Seq.zip req.ctx.locales (seq {
+        for i in 0..(req.ctx.locales.Length-1) -> Seq.map (fun exp -> (fst exp).csets[i]) exported |> Set.unionMany
+    })
+    |> Array.ofSeq
 
 let explainCsets csets =
     csets
-    |> Array.map (fun (loc, cset) -> $"\n~~~~~~\nCSet for locale {loc}:\n\n{cset |> Set.toArray |> System.String}")
+    |> Array.map (fun (loc, cset) -> $"\n~~~~~~\nCSet for locale {loc}:\n\n{cset |> Set.toArray |> String}")
     |> String.concat "\n"
 
 let generateAll ssht =

@@ -17,6 +17,13 @@ let partialZip2 ls =
 
 let detuple ls =
     List.map (fun (a, b) -> [ a; b ]) ls |> List.concat
+    
+let unzipNullable (ls: ('a * 'b) option list) =
+    List.foldBack (fun ele (aacc, bacc) ->
+                    match ele with
+                    | Some (a, b) -> (Some a::aacc, Some b::bacc)
+                    | None -> (None::aacc, None::bacc))
+        ls ([], [])
 
 let maxConsecutive x =
     List.fold (fun (max, curr) y ->
@@ -55,18 +62,9 @@ let separateBy<'T> (sep:'T) arr =
     |> List.tail)
     
 let MapFst f (x, y) = (f x, y)
+let MapSnd f (x, y) = (x, f y)
 
-let range a b =
-    seq {
-        for i in a .. (b - 1) do
-            yield i
-    }
-
-let updateCharset charset (str: string) =
-    str.Length
-    |> range 0
-    |> Seq.fold (fun acc x -> Set.add (str.Chars(x)) acc) charset
-
+///Replace null elements in `into` by sequentially pulling elements from `from`.
 let mixBack into from =
     into
     |> List.fold (fun (recons, mixsrc) x ->

@@ -67,14 +67,11 @@ type LGenCtx = {
     funcStandardizer: string -> string
     className: string
     nestedClassName: string
+    ///A C# attribute to attach to non-nested classes, eg "LocalizationStringsRepo".
+    classAttribute : string Option
     namespace_: string
     outputHeader: string
-    ///Errors output by the generation process
-    errors: string list
-    lsGenerated: (string * string) list
 } with
-    member this.AddError str = { this with errors = str::this.errors }
-    member this.AddErrors strs = { this with errors = List.append this.errors strs }
     member private this.CSharpifyNoQuotes pu =
         match pu with 
         | String s -> s
@@ -107,6 +104,17 @@ type LGenCtx = {
         | Some s -> commit s acc
         | _ -> acc
 
+type GenOutput = {
+    ///Errors output by the generation process
+    errors: string list
+    lsGenerated: (string * string) list
+    csets: char Set list
+} with
+    static member Empty (ctx: LGenCtx) = { errors = []; lsGenerated = []; csets = ctx.locales |> List.map (fun _ -> Set.empty) }
+    member this.AddError str = { this with errors = str::this.errors }
+    member this.AddErrors strs = { this with errors = List.append this.errors strs }
+
+
 let generateArgs nargs =
     [0..(nargs - 1)]
     |> List.map argString
@@ -117,29 +125,34 @@ let generateParams (ctx:LGenCtx) nargs =
     |> String.concat ", "
 
 
-let generateCaseBody locale cset nargs (ctx: LGenCtx) (localized: ParseSequence * State) =
-    let seq = localized |> fst |> ctx.AccCSharpify
-    if seq.Length = 1
+let generateCaseBody locale nargs (ctx: LGenCtx) (localized: ParseSequence) =
+    let strings = localized |> ctx.AccCSharpify
+    if strings.Length = 1
     then
-        updateCharset cset seq[0], ctx,
-        if nargs = 0 then [Word seq[0]] else [
-            $"{ctx.renderFunc}({locale}, {seq[0]}, " |> Word
+        Set.ofSeq strings[0],
+        if nargs = 0 then [Word strings[0]] else [
+            $"{ctx.renderFunc}({locale}, {strings[0]}, " |> Word
             generateArgs nargs |> Word
             Word(")")
         ]
     else
-        let cset, pieces = List.foldBack (fun word (cset, acc) ->
-                        updateCharset cset word, [
-                            Newline
-                            Word word
-                            Word ","
-                        ]::acc) seq (cset, List.empty)
-        cset, ctx, List.concat [
+        let cset =
+            strings
+            |> Seq.map Set.ofSeq
+            |> Set.unionMany
+        let pieces =
+            strings
+            |> List.collect (fun word -> [
+                    Newline
+                    Word word
+                    Word ","
+                ])
+        cset, List.concat [
             [
                 $"{ctx.renderFunc}({locale}, new[] {{" |> Word
                 Indent
             ]
-            List.concat pieces
+            pieces
             [
                 Dedent
                 Newline
@@ -149,9 +162,9 @@ let generateCaseBody locale cset nargs (ctx: LGenCtx) (localized: ParseSequence 
             ]
         ]
 
-let generateSwitchCaseOrDefault locale cset nargs (ctx: LGenCtx) caseString localized =
-    let cset, ctx, body = generateCaseBody locale cset nargs ctx localized
-    cset, ctx, List.concat [
+let generateSwitchCase locale nargs (ctx: LGenCtx) caseString localized =
+    generateCaseBody locale nargs ctx localized
+    |> MapSnd (fun body -> List.concat [
         [
             Newline
             Word caseString
@@ -161,62 +174,51 @@ let generateSwitchCaseOrDefault locale cset nargs (ctx: LGenCtx) caseString loca
         [
             Word ","
         ]
-    ]
-    
-    
-    
-let generateSwitchCase cset nargs (ctx: LGenCtx) lang localized =
-    generateSwitchCaseOrDefault lang cset nargs ctx lang localized
-    
-let generateSwitchDefault cset nargs (ctx: LGenCtx) localized =
-    generateSwitchCaseOrDefault "null" cset nargs ctx "_" localized
+    ])
    
-let generateSwitch nargs ctx (localizeds: ((ParseSequence * State) * string * char Set) list) =
-    let default_localized::localizeds = localizeds
-    let (dflt_parse, _, dflt_cset) = default_localized
-    let dflt_cset, ctx, default_case = generateSwitchDefault dflt_cset nargs ctx dflt_parse
-    let csets, ctx, cases =
-        localizeds
-        |> List.fold (fun (csets, ctx, acc) (localized, lang, cset) ->
-            let cset, ctx, case = generateSwitchCase cset nargs ctx lang localized
-            cset::csets, ctx, case::acc
-            ) ([], ctx, [])
-    dflt_cset::csets, ctx, List.concat [
+let generateSwitch nargs ctx (localizeds: ((ParseSequence * State) * string) option list) =
+    localizeds
+    |> List.mapi (fun i -> Option.map (fun ((parsed, _), locale) ->
+            if i = 0
+            then generateSwitchCase "null" nargs ctx "_" parsed
+            else generateSwitchCase locale nargs ctx locale parsed))
+    |> unzipNullable
+    |> MapSnd (fun cases -> List.concat [
         [
             $"%s{ctx.localeSwitch} switch {{" |> Word
             Indent
         ]
-        (default_case::cases) |> List.rev |> List.concat
+        //default case should be at the end for switch expression
+        List.append (List.skip 1 cases) [cases[0]] |> List.choose id |> List.concat
         [
             Dedent
             Newline
             Word "}"
         ]
-    ]
+    ])
 
-let generateLS key (cls:string) nargs ctx (localizeds: ((ParseSequence * State) * string * char Set) list) =
-    let default_localized::localizeds = localizeds
-    let (dflt_parse, dflt_locale, dflt_cset) = default_localized
-    let dflt_cset, ctx, default_case = generateCaseBody dflt_locale dflt_cset nargs ctx dflt_parse
-    let csets, ctx, cases =
+let generateLS key (cls:string) nargs ctx (localizeds: ((ParseSequence * State) * string) option list) =
+    let csets, cases =
         localizeds
-        |> List.rev
-        |> List.fold (fun (csets, ctx, acc) (localized, locale, cset) ->
-            let cset, ctx, case = generateCaseBody locale cset nargs ctx localized
-            cset::csets, ctx, (locale, case)::acc
-            ) ([], ctx, [])
-    dflt_cset::csets, ctx, List.concat [
+        |> List.map (Option.map (fun (localized, locale) ->
+            let ncset, case = generateCaseBody locale nargs ctx (fst localized)
+            (ncset, (locale, case)))
+        )
+        |> unzipNullable
+    csets, List.concat [
         [
             Word $"new {cls}("
             Indent
         ]
-        default_case
+        (Option.map snd cases[0] |> Option.defaultValue [Word "null"]) //default case, locale def not required
         cases
-        |> List.collect (fun (loc, strs) -> List.concat [
+        |> List.skip 1
+        |> List.choose id
+        |> List.collect (fun (locale, strs) -> List.concat [
             [
                 Word ","
                 Newline
-                Word $"({loc}, "
+                Word $"({locale}, "
             ]
             strs
             [
@@ -233,39 +235,43 @@ let generateLS key (cls:string) nargs ctx (localizeds: ((ParseSequence * State) 
     
         
 
-let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
+let generateRow (generated: GenOutput) (ctx: LGenCtx) (row: Row) =
     let err_localizeds =
         row.locales
         |> List.map stringParser
     if List.length err_localizeds <> List.length ctx.locales
         then failwith "Incorrect number of locales provided"
-    let remix_csets, ctx, localizeds =
-        List.foldBack(fun x (rcsets, ctx: LGenCtx, localizeds) ->
-                    match x with
+    let errs, mlocalizeds =
+        List.foldBack (fun (x, locale) (errs, acc) ->
+                     match x with
                     //If the parse is empty, then skip the language for this row
-                    | OK parsed, lang, cset -> if List.length (fst parsed) = 0
-                                                then (Some cset::rcsets, ctx, localizeds)
-                                                else (None::rcsets, ctx, (parsed, lang, cset)::localizeds)
-                    | Failed msg, _, cset -> (Some cset::rcsets, ctx.AddErrors msg, localizeds)
-        ) (List.zip3 err_localizeds ctx.locales csets) ([], ctx, [])
+                     | OK parsed -> if List.length (fst parsed) = 0
+                                    then (errs, None::acc)
+                                    else (errs, Some (parsed, locale)::acc)
+                     | Failed msgs -> (List.append errs msgs, None::acc))
+            (List.zip err_localizeds ctx.locales) (generated.errors, [])
+
+    let generated = { generated with errors = errs }
+    let nsuccessful = List.choose id mlocalizeds |> List.length
     //No strings, don't generate an entry
-    if List.length localizeds = 0 then csets, ctx, []
+    if nsuccessful = 0 then generated, []
     else
     let nargs =
-        (localizeds
-        |> Seq.map (fun ((_, state: State), _, _) -> state.highestArg)
+        (mlocalizeds
+        |> Seq.choose (Option.map (fun ((_, state: State), _) -> state.highestArg))
         |> Seq.max) + 1
-    if nargs > 0 && List.length localizeds <> List.length ctx.locales
+    if nargs > 0 && nsuccessful <> List.length ctx.locales
     then Console.WriteLine $"Row {row.key} uses function strings, but does not provide translations for one or more languages."
     let objName = row.key.Replace('.', '_')
     let fullKey = ctx.lskeyprefix + row.key
+    let finalizeCsets ncsets =
+        List.zip ncsets generated.csets
+        |> List.map (fun (nc, c) -> Option.map (Set.union c) nc |> Option.defaultValue c)
     match nargs, ctx.lsclass with
     //Zero-arg: generate a LocalizedString on the backend, with no suffix (?).
     | 0, Some (instCls, staticCls) ->
-        let csets, ctx, ls =
-            localizeds
-            |> generateLS fullKey instCls nargs ctx
-        mixBack remix_csets csets, { ctx with lsGenerated = (row.key, objName)::ctx.lsGenerated }, List.concat [
+        let csets, ls = generateLS fullKey instCls nargs ctx mlocalizeds
+        { generated with csets = finalizeCsets csets; lsGenerated = (row.key, objName)::generated.lsGenerated }, List.concat [
             [
                 Newline
                 Word $"public static readonly {staticCls} {objName} = "
@@ -277,12 +283,10 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
             ]
         ]
     | _, _ ->
-        let csets, ctx, switch =
-            localizeds
-            |> generateSwitch nargs ctx
+        let csets, switch = generateSwitch nargs ctx mlocalizeds
         if nargs = 0 then
             //Zero-arg, no method-to-LS: generate a string on the backend.
-            mixBack remix_csets csets, ctx, List.concat [
+            { generated with csets = finalizeCsets csets }, List.concat [
                 [
                     Newline
                     Word $"public static string {objName} => "
@@ -299,9 +303,9 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
             let ls_copy = //cset/ctx output is not important
                 match ctx.lsclass, ctx.methodToLsSuffix with
                 | Some (instCls, staticCls), Some suffix ->
-                       localizeds
+                       mlocalizeds
                        |> generateLS fullKey instCls nargs ctx 
-                       |> (fun (csets, ctx, ls) ->
+                       |> (fun (csets, ls) ->
                            List.concat [
                                [
                                    Newline
@@ -314,7 +318,7 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
                                ]
                            ])
                 | _, _ -> []
-            mixBack remix_csets csets, ctx, List.concat [
+            { generated with csets = finalizeCsets csets }, List.concat [
                 [
                     Newline
                     Word $"public static string {objName}({prms}) => "
@@ -327,17 +331,17 @@ let generateRow (csets: char Set list) (ctx: LGenCtx) (row: Row) =
                 ls_copy
             ]
  
-let generateRows csets (ctx: LGenCtx) rows =
-    let csets, ctx, genRows =
+let generateRows (ctx: LGenCtx) rows =
+    let generated, genRows =
         rows
         |> Seq.filter (fun (row: Row) -> System.String.IsNullOrWhiteSpace(row.key) |> not)
-        |> Seq.fold (fun (csets, ctx, acc) row ->
-                let csets, ctx, genRow = generateRow csets ctx row
-                (csets, ctx, genRow::acc)
-        ) (csets, ctx, [])
-    csets, ctx, genRows |> List.rev |> List.concat
+        |> Seq.fold (fun (gen, acc) row ->
+                let gen, genRow = generateRow gen ctx row
+                (gen, genRow::acc)
+        ) (GenOutput.Empty ctx, [])
+    generated, genRows |> List.rev |> List.concat
     
-let generateClass ctx inner =
+let generateClass ctx attribute inner =
     List.concat [
         [
             Word ctx.outputHeader
@@ -345,6 +349,14 @@ let generateClass ctx inner =
             Newline
             $"namespace {ctx.namespace_} {{" |> Word
             Newline
+        ]
+        attribute
+            |> Option.map (fun attr -> [
+                Word $"[{attr}]"
+                Newline
+            ])
+            |> Option.defaultValue []
+        [
             $"public static partial class {ctx.className} {{" |> Word
             Indent
             Newline
@@ -361,7 +373,7 @@ let generateClass ctx inner =
     ]
 
 let generateNestedClass ctx inner =
-    generateClass ctx (List.concat [
+    generateClass ctx Option.None (List.concat [
         [
             $"public static partial class {ctx.nestedClassName} {{" |> Word
             Indent
@@ -376,24 +388,19 @@ let generateNestedClass ctx inner =
         
     ])
 
-let generateCSV csets ctx (path: string) =
-    let csets, ctx, genRows =
+let generateCSV ctx (path: string) =
+    let generated, genRows =
         ctx.loadRows path 
-        |> generateRows csets ctx
-    csets, ctx, generateNestedClass ctx genRows
+        |> generateRows ctx
+    generated, generateNestedClass ctx genRows
 
-let exportCSV csets ctx path out =
-    let csets, ctx, gen = generateCSV csets ctx path
-    File.WriteAllText(out, (render gen 0))
-    csets, ctx
+let exportCSV ctx path outpath =
+    let generated, gen = generateCSV ctx path
+    File.WriteAllText(outpath, (render gen 0))
+    generated
    
-let exportFile csets ctx (path: string) filename outdir =
-    let parts = Path.GetFileName(path).Split(".")
-    //parts
-    //|> Array.take (parts.Length - 1)
-    //|> String.concat "."
-    filename
-    |> sprintf "%s.cs"
+let exportFile ctx (path: string) filename outdir =
+    $"{filename}.cs"
     |> fun x -> Path.Join(outdir, x)
-    |> exportCSV csets ctx path
+    |> exportCSV ctx path
   

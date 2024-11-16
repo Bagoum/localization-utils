@@ -44,7 +44,7 @@ type Errorable<'t> =
         //ugly solution to avoid a type depth annoyance in il2cpp
         if List.forall (function | OK _ -> true | _ -> false) errbs
         then errbs |> List.map (function | OK x -> x) |> OK
-        else errbs |> List.map (fun x -> x.asErrs) |> List.concat |> Failed
+        else errbs |> List.map (_.asErrs) |> List.concat |> Failed
         
         //List.foldBack (fun x acc ->
         //    match (x, acc) with

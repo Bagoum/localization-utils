@@ -11,19 +11,8 @@ using Google.Apis.Script.v1.Data;
 
 namespace ActorCS {
 public static class Helpers {
-    private const string GDRIVE_KEY_ENVVAR = "BLIB_GOOGLE_API_KEY";
-
-    private static readonly string GDriveApiKey;
-    
-    private static Random rand = new Random();
-    private static string randChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-    
-    private static string GetOrThrowEnvVar(string key) => 
-        Environment.GetEnvironmentVariable(key) ?? throw new Exception($"Could not get environment variable {key}");
-
-    static Helpers() {
-        GDriveApiKey = GetOrThrowEnvVar(GDRIVE_KEY_ENVVAR);
-    }
+    private static readonly Random rand = new();
+    private const string randChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
     public static async Task<UserCredential> AuthorizeOAuth(string secretsFile, CancellationToken? cT = null) {
         //Note: If you change the required permissions, you need to delete the token in
